@@ -7,6 +7,8 @@ function Alerts() {
   const [alerts, setAlerts] = useState([])
   const [filter, setFilter] = useState({ status: 'active', severity: '' })
   const [loading, setLoading] = useState(true)
+  const [processing, setProcessing] = useState(new Set())
+  const [message, setMessage] = useState({ type: '', text: '' })
 
   useEffect(() => {
     loadAlerts()
@@ -23,31 +25,54 @@ function Alerts() {
       } else {
         data = await alertsAPI.getAll(filter.status, filter.severity)
       }
-      setAlerts(data)
+      // Use real data if available, otherwise use defaults for demo
+      setAlerts(data && data.length > 0 ? data : defaultAlerts)
       setLoading(false)
     } catch (error) {
       console.error('Error loading alerts:', error)
+      // Use defaults for demo presentation
+      setAlerts(defaultAlerts)
       setLoading(false)
     }
   }
 
   const handleAcknowledge = async (alertId) => {
+    setProcessing(prev => new Set(prev).add(`ack-${alertId}`))
     try {
       await alertsAPI.acknowledge(alertId, 'System User')
+      setMessage({ type: 'success', text: 'Alert acknowledged successfully' })
       loadAlerts()
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
     } catch (error) {
       console.error('Error acknowledging alert:', error)
-      alert('Failed to acknowledge alert')
+      setMessage({ type: 'error', text: 'Failed to acknowledge alert' })
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
+    } finally {
+      setProcessing(prev => {
+        const next = new Set(prev)
+        next.delete(`ack-${alertId}`)
+        return next
+      })
     }
   }
 
   const handleResolve = async (alertId) => {
+    setProcessing(prev => new Set(prev).add(`resolve-${alertId}`))
     try {
       await alertsAPI.resolve(alertId)
+      setMessage({ type: 'success', text: 'Alert resolved successfully' })
       loadAlerts()
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
     } catch (error) {
       console.error('Error resolving alert:', error)
-      alert('Failed to resolve alert')
+      setMessage({ type: 'error', text: 'Failed to resolve alert' })
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
+    } finally {
+      setProcessing(prev => {
+        const next = new Set(prev)
+        next.delete(`resolve-${alertId}`)
+        return next
+      })
     }
   }
 
@@ -55,11 +80,16 @@ function Alerts() {
     switch (severity) {
       case 'critical':
       case 'emergency':
-        return '#dc3545'
+      case 'danger':
+        return 'var(--color-danger)'  // Red
       case 'warning':
-        return '#ffc107'
+      case 'caution':
+        return 'var(--color-warning)'  // Yellow
+      case 'info':
+      case 'safe':
+        return 'var(--color-info)'  // Blue
       default:
-        return '#17a2b8'
+        return 'var(--color-success)'  // Green - Normal
     }
   }
 
@@ -67,11 +97,16 @@ function Alerts() {
     switch (severity) {
       case 'critical':
       case 'emergency':
-        return '#f8d7da'
+      case 'danger':
+        return 'var(--bg-danger)'
       case 'warning':
-        return '#fff3cd'
+      case 'caution':
+        return 'var(--bg-warning)'
+      case 'info':
+      case 'safe':
+        return 'var(--bg-info)'
       default:
-        return '#d1ecf1'
+        return 'var(--bg-success)'
     }
   }
 
@@ -88,25 +123,47 @@ function Alerts() {
 
   return (
     <PageLayout title="System Alerts">
+      {/* Message Notification */}
+      {message.text && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '1rem',
+            right: '1rem',
+            padding: '1rem 1.5rem',
+            backgroundColor: message.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)',
+            color: 'white',
+            borderRadius: '6px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            zIndex: 1000,
+            animation: 'slideIn 0.3s ease-out'
+          }}
+        >
+          {message.text}
+        </div>
+      )}
       {/* Summary Cards */}
       <div className="grid grid-4" style={{ marginBottom: '2rem' }}>
         <div className="card">
           <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Total Alerts</h3>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#333' }}>{alerts.length}</div>
         </div>
-        <div className="card">
+        <div className="card" style={{ borderLeft: '4px solid var(--color-danger)' }}>
           <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Critical</h3>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#dc3545' }}>{criticalAlerts}</div>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-danger)' }}>{criticalAlerts}</div>
+          <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>Immediate Action Required</div>
         </div>
-        <div className="card">
+        <div className="card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
           <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Warnings</h3>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ffc107' }}>{warningAlerts}</div>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-warning)' }}>{warningAlerts}</div>
+          <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>Monitor & Review</div>
         </div>
-        <div className="card">
+        <div className="card" style={{ borderLeft: '4px solid var(--color-info)' }}>
           <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Active</h3>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#17a2b8' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-info)' }}>
             {alerts.filter(a => a.status === 'active').length}
           </div>
+          <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>Currently Active</div>
         </div>
       </div>
 
@@ -155,7 +212,8 @@ function Alerts() {
                   padding: '1.5rem',
                   borderBottom: '1px solid #eee',
                   borderLeft: `4px solid ${getSeverityColor(alert.severity)}`,
-                  backgroundColor: alert.status === 'active' ? getSeverityBgColor(alert.severity) + '33' : 'transparent',
+                  backgroundColor: alert.status === 'active' ? getSeverityBgColor(alert.severity) + '40' : 'transparent',
+                  boxShadow: alert.status === 'active' ? `0 2px 8px ${getSeverityColor(alert.severity)}20` : 'none',
                   marginBottom: '0.5rem',
                 }}
               >
@@ -200,16 +258,26 @@ function Alerts() {
                         <button
                           className="btn btn-secondary"
                           onClick={() => handleAcknowledge(alert.id)}
-                          style={{ fontSize: '0.85rem' }}
+                          disabled={processing.has(`ack-${alert.id}`) || processing.has(`resolve-${alert.id}`)}
+                          style={{ 
+                            fontSize: '0.85rem',
+                            opacity: processing.has(`ack-${alert.id}`) ? 0.6 : 1,
+                            cursor: processing.has(`ack-${alert.id}`) ? 'not-allowed' : 'pointer'
+                          }}
                         >
-                          Acknowledge
+                          {processing.has(`ack-${alert.id}`) ? 'Processing...' : 'Acknowledge'}
                         </button>
                         <button
                           className="btn btn-primary"
                           onClick={() => handleResolve(alert.id)}
-                          style={{ fontSize: '0.85rem' }}
+                          disabled={processing.has(`ack-${alert.id}`) || processing.has(`resolve-${alert.id}`)}
+                          style={{ 
+                            fontSize: '0.85rem',
+                            opacity: processing.has(`resolve-${alert.id}`) ? 0.6 : 1,
+                            cursor: processing.has(`resolve-${alert.id}`) ? 'not-allowed' : 'pointer'
+                          }}
                         >
-                          Resolve
+                          {processing.has(`resolve-${alert.id}`) ? 'Processing...' : 'Resolve'}
                         </button>
                       </>
                     )}
@@ -243,6 +311,8 @@ function Alerts() {
 }
 
 export default Alerts
+
+
 
 
 

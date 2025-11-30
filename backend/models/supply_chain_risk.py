@@ -60,3 +60,5 @@ class SupplyChainRisk(Base):
 
 
 
+
+

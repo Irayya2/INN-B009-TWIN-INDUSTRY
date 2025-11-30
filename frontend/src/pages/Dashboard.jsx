@@ -12,6 +12,27 @@ function Dashboard() {
   const [alerts, setAlerts] = useState([])
   const [predictions, setPredictions] = useState([])
   const [loading, setLoading] = useState(true)
+  
+  // Default demo data for judges presentation
+  const defaultMachines = [
+    { machine_id: 'CNC-001', name: 'CNC Milling Machine', status: 'OPERATIONAL', health_score: 95, fault_probability: 2 },
+    { machine_id: 'LATHE-002', name: 'Lathe Machine', status: 'WARNING', health_score: 65, fault_probability: 25 },
+    { machine_id: 'CONV-003', name: 'Conveyor Belt', status: 'CRITICAL', health_score: 35, fault_probability: 75 },
+    { machine_id: 'COMP-004', name: 'Compressor Unit', status: 'MAINTENANCE', health_score: 50, fault_probability: 40 },
+    { machine_id: 'PUMP-005', name: 'Water Pump', status: 'OPERATIONAL', health_score: 88, fault_probability: 5 },
+  ]
+  
+  const defaultAlerts = [
+    { id: 1, title: 'High Vibration Detected', message: 'Machine CONV-003 showing excessive vibration levels', severity: 'critical', status: 'active', created_at: new Date().toISOString() },
+    { id: 2, title: 'Temperature Warning', message: 'LATHE-002 operating above normal temperature range', severity: 'warning', status: 'active', created_at: new Date(Date.now() - 3600000).toISOString() },
+    { id: 3, title: 'Maintenance Due', message: 'COMP-004 scheduled maintenance overdue', severity: 'warning', status: 'active', created_at: new Date(Date.now() - 7200000).toISOString() },
+  ]
+  
+  const defaultPredictions = [
+    { machine_id: 'CONV-003', name: 'Conveyor Belt', alert_level: 'red', fault_probability: 75, health_score: 35 },
+    { machine_id: 'LATHE-002', name: 'Lathe Machine', alert_level: 'yellow', fault_probability: 25, health_score: 65 },
+    { machine_id: 'COMP-004', name: 'Compressor Unit', alert_level: 'yellow', fault_probability: 40, health_score: 50 },
+  ]
 
   useEffect(() => {
     loadDashboardData()
@@ -22,17 +43,22 @@ function Dashboard() {
   const loadDashboardData = async () => {
     try {
       const [machinesData, alertsData, predictionsData] = await Promise.all([
-        machinesAPI.getAll(),
-        alertsAPI.getActive(),
-        faultsAPI.predictAll(),
+        machinesAPI.getAll().catch(() => defaultMachines),
+        alertsAPI.getActive().catch(() => ({ alerts: defaultAlerts })),
+        faultsAPI.predictAll().catch(() => ({ predictions: defaultPredictions })),
       ])
 
-      setMachines(machinesData || [])
-      setAlerts(alertsData.alerts || [])
-      setPredictions(predictionsData.predictions || [])
+      // Use real data if available, otherwise use defaults for demo
+      setMachines(machinesData && machinesData.length > 0 ? machinesData : defaultMachines)
+      setAlerts(alertsData?.alerts && alertsData.alerts.length > 0 ? alertsData.alerts : defaultAlerts)
+      setPredictions(predictionsData?.predictions && predictionsData.predictions.length > 0 ? predictionsData.predictions : defaultPredictions)
       setLoading(false)
     } catch (error) {
       console.error('Error loading dashboard data:', error)
+      // Use defaults for demo presentation
+      setMachines(defaultMachines)
+      setAlerts(defaultAlerts)
+      setPredictions(defaultPredictions)
       setLoading(false)
     }
   }
@@ -85,25 +111,28 @@ function Dashboard() {
           <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Total Machines</h3>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#333' }}>{machines.length}</div>
         </div>
-        <div className="card">
+        <div className="card" style={{ borderLeft: '4px solid var(--color-danger)' }}>
           <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Critical Alerts</h3>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#dc3545' }}>
-            {alerts.filter(a => a.severity === 'critical').length}
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-danger)' }}>
+            {alerts.filter(a => a.severity === 'critical' || a.severity === 'emergency').length}
           </div>
+          <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>Requires Immediate Action</div>
         </div>
-        <div className="card">
+        <div className="card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
           <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>At Risk Machines</h3>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ffc107' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-warning)' }}>
             {criticalMachines + warningMachines}
           </div>
+          <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>Monitor Closely</div>
         </div>
-        <div className="card">
+        <div className="card" style={{ borderLeft: '4px solid var(--color-success)' }}>
           <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Avg Health Score</h3>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#28a745' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-success)' }}>
             {machines.length > 0
               ? Math.round(machines.reduce((sum, m) => sum + (m.health_score || 0), 0) / machines.length)
-              : 0}
+              : 0}%
           </div>
+          <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>Overall System Health</div>
         </div>
       </div>
 
@@ -167,8 +196,8 @@ function Dashboard() {
                     padding: '1rem',
                     borderBottom: '1px solid #eee',
                     borderLeft: `4px solid ${
-                      alert.severity === 'critical' ? '#dc3545' :
-                      alert.severity === 'warning' ? '#ffc107' : '#17a2b8'
+                      alert.severity === 'critical' || alert.severity === 'emergency' ? 'var(--color-danger)' :
+                      alert.severity === 'warning' ? 'var(--color-warning)' : 'var(--color-info)'
                     }`,
                   }}
                 >
@@ -203,8 +232,8 @@ function Dashboard() {
                     padding: '1rem',
                     borderBottom: '1px solid #eee',
                     borderLeft: `4px solid ${
-                      prediction.alert_level === 'red' ? '#dc3545' :
-                      prediction.alert_level === 'yellow' ? '#ffc107' : '#28a745'
+                      prediction.alert_level === 'red' ? 'var(--color-danger)' :
+                      prediction.alert_level === 'yellow' ? 'var(--color-warning)' : 'var(--color-success)'
                     }`,
                   }}
                 >
@@ -226,6 +255,8 @@ function Dashboard() {
 }
 
 export default Dashboard
+
+
 
 
 

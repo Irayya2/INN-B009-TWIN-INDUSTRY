@@ -34,7 +34,7 @@ if DATABASE_URL.startswith("postgresql://"):
 elif DATABASE_URL.startswith("postgresql+psycopg2://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
 
-# print(f"USING DATABASE_URL: {DATABASE_URL}")
+print(f"USING DATABASE_URL: {DATABASE_URL}")
 
 # ------------------------------
 # Create async engine

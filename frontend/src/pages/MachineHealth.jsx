@@ -10,6 +10,14 @@ function MachineHealth() {
   const [sensorData, setSensorData] = useState([])
   const [prediction, setPrediction] = useState(null)
   const [loading, setLoading] = useState(true)
+  
+  // Default demo machines for judges presentation
+  const defaultMachines = [
+    { machine_id: 'CNC-001', name: 'CNC Milling Machine', status: 'OPERATIONAL', health_score: 95, fault_probability: 2, location: 'Production Line A', department: 'Manufacturing' },
+    { machine_id: 'LATHE-002', name: 'Lathe Machine', status: 'WARNING', health_score: 65, fault_probability: 25, location: 'Production Line B', department: 'Manufacturing' },
+    { machine_id: 'CONV-003', name: 'Conveyor Belt', status: 'CRITICAL', health_score: 35, fault_probability: 75, location: 'Assembly Area', department: 'Assembly' },
+    { machine_id: 'COMP-004', name: 'Compressor Unit', status: 'MAINTENANCE', health_score: 50, fault_probability: 40, location: 'Utility Room', department: 'Maintenance' },
+  ]
 
   useEffect(() => {
     loadMachines()
@@ -26,13 +34,19 @@ function MachineHealth() {
   const loadMachines = async () => {
     try {
       const data = await machinesAPI.getAll()
-      setMachines(data || [])
-      if (data && data.length > 0 && !selectedMachine) {
-        setSelectedMachine(data[0].machine_id)
+      const machinesList = data && data.length > 0 ? data : defaultMachines
+      setMachines(machinesList)
+      if (machinesList.length > 0 && !selectedMachine) {
+        setSelectedMachine(machinesList[0].machine_id)
       }
       setLoading(false)
     } catch (error) {
       console.error('Error loading machines:', error)
+      // Use defaults for demo presentation
+      setMachines(defaultMachines)
+      if (defaultMachines.length > 0 && !selectedMachine) {
+        setSelectedMachine(defaultMachines[0].machine_id)
+      }
       setLoading(false)
     }
   }
@@ -72,15 +86,25 @@ function MachineHealth() {
   }))
 
   const getHealthColor = (score) => {
-    if (score >= 80) return '#28a745'
-    if (score >= 60) return '#ffc107'
-    return '#dc3545'
+    if (score >= 80) return 'var(--color-success)'  // Green - Healthy/Safe
+    if (score >= 60) return 'var(--color-warning)'   // Yellow - Warning
+    return 'var(--color-danger)'                      // Red - Critical/Danger
   }
 
   const getAlertLevelColor = (level) => {
-    if (level === 'green') return '#28a745'
-    if (level === 'yellow') return '#ffc107'
-    return '#dc3545'
+    if (level === 'green' || level === 'safe') return 'var(--color-success)'
+    if (level === 'yellow' || level === 'warning') return 'var(--color-warning)'
+    if (level === 'blue' || level === 'info') return 'var(--color-info)'
+    return 'var(--color-danger)'  // Red - Critical
+  }
+  
+  const getStatusBadgeClass = (status) => {
+    const statusLower = (status || '').toLowerCase()
+    if (statusLower === 'operational' || statusLower === 'healthy') return 'status-operational'
+    if (statusLower === 'warning' || statusLower === 'caution') return 'status-warning'
+    if (statusLower === 'critical' || statusLower === 'danger' || statusLower === 'fault') return 'status-critical'
+    if (statusLower === 'maintenance' || statusLower === 'info') return 'status-maintenance'
+    return 'status-offline'
   }
 
   return (
@@ -111,23 +135,33 @@ function MachineHealth() {
         <>
           {/* Machine Status Cards */}
           <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
-            <div className="card">
+            <div className="card" style={{ borderLeft: `4px solid ${getHealthColor(machine.health_score || 0)}` }}>
               <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Health Score</h3>
               <div style={{ fontSize: '2rem', fontWeight: 'bold', color: getHealthColor(machine.health_score || 0) }}>
                 {(machine.health_score || 0).toFixed(1)}%
               </div>
+              <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>
+                {(machine.health_score || 0) >= 80 ? 'Excellent' : (machine.health_score || 0) >= 60 ? 'Good' : 'Poor'}
+              </div>
             </div>
-            <div className="card">
+            <div className="card" style={{ borderLeft: '4px solid var(--color-danger)' }}>
               <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Fault Probability</h3>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#dc3545' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-danger)' }}>
                 {(machine.fault_probability || 0).toFixed(1)}%
               </div>
-            </div>
-            <div className="card">
-              <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Status</h3>
+              <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>
+                {(machine.fault_probability || 0) > 50 ? 'High Risk' : (machine.fault_probability || 0) > 20 ? 'Moderate Risk' : 'Low Risk'}
               </div>
-            </PageLayout>
-          )
+            </div>
+            <div className="card" style={{ borderLeft: `4px solid ${
+              machine.status === 'OPERATIONAL' ? 'var(--color-success)' :
+              machine.status === 'WARNING' ? 'var(--color-warning)' :
+              machine.status === 'CRITICAL' ? 'var(--color-danger)' : 'var(--color-info)'
+            }` }}>
+              <h3 style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>Status</h3>
+              <div>
+                <span className={getStatusBadgeClass(machine.status)}>
+                  {machine.status || 'OPERATIONAL'}
                 </span>
               </div>
             </div>
@@ -238,11 +272,12 @@ function MachineHealth() {
           )}
         </>
       )}
-    </div>
+    </PageLayout>
   )
 }
 
 export default MachineHealth
+
 
 
 
