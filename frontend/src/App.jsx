@@ -7,6 +7,8 @@ import Alerts from './pages/Alerts'
 import SOPManager from './pages/SOPManager'
 import MaintenanceScheduler from './pages/MaintenanceScheduler'
 import './App.css'
+import SensorTestInput from "./pages/SensorTestInput"
+
 
 function Navigation() {
   const location = useLocation()
@@ -18,6 +20,8 @@ function Navigation() {
     { path: '/alerts', label: 'Alerts', icon: '🔔' },
     { path: '/sop-manager', label: 'SOP Manager', icon: '📋' },
     { path: '/maintenance', label: 'Maintenance', icon: '🔧' },
+    { path: '/test-input', label: 'Test Machine', icon: '🧪' },
+
   ]
 
   return (

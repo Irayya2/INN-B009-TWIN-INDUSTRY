@@ -3,6 +3,9 @@ import { alertsAPI } from '../services/api'
 import '../App.css'
 import PageLayout from '../components/PageLayout'
 
+const defaultAlerts = []
+
+
 function Alerts() {
   const [alerts, setAlerts] = useState([])
   const [filter, setFilter] = useState({ status: 'active', severity: '' })
